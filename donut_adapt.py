@@ -81,7 +81,7 @@ def prepare_dataset():
         
         # Let's print features to confirm. We'll assume path is available:
         # For safety, let's do:
-        path = example["image"]["path"] if "path" in example["image"] else None
+        path = example["image"].filename
         if path:
             fname = os.path.basename(path)
             if fname in text_map:

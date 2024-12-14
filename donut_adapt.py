@@ -34,8 +34,9 @@ def prepare_dataset():
             json.dump(entry, outfile)
             outfile.write('\n')
 
-    # Remove old metadata
-    shutil.rmtree(metadata_path)
+    # Remove old metadata if it exists
+    if metadata_path.exists():
+        shutil.rmtree(metadata_path)
     
     # Load dataset
     dataset = load_dataset("imagefolder", data_dir=image_path, split="train")

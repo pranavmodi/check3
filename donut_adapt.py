@@ -279,25 +279,25 @@ def main():
     processor = initialize_processor(dataset)
     print("✓ Processor initialized and configured")
 
-    # # Process dataset
-    # print("\n🔄 Processing and transforming dataset...")
-    # train_test_dataset = process_dataset(dataset, processor)
-    # print(f"✓ Dataset split into {len(train_test_dataset['train'])} train and {len(train_test_dataset['test'])} test samples")
+    # Process dataset
+    print("\n🔄 Processing and transforming dataset...")
+    train_test_dataset = process_dataset(dataset, processor)
+    print(f"✓ Dataset split into {len(train_test_dataset['train'])} train and {len(train_test_dataset['test'])} test samples")
 
-    # # Setup model
-    # print("\n🔄 Setting up model...")
-    # model = setup_model(processor)
-    # print("✓ Model initialized and configured")
+    # Setup model
+    print("\n🔄 Setting up model...")
+    model = setup_model(processor)
+    print("✓ Model initialized and configured")
 
-    # # Get training arguments
-    # print("\n⚙️ Setting up training arguments...")
-    # training_args = get_training_args()
-    # print("✓ Training arguments configured")
+    # Get training arguments
+    print("\n⚙️ Setting up training arguments...")
+    training_args = get_training_args()
+    print("✓ Training arguments configured")
 
-    # # Train model
-    # print("\n🚀 Starting training...")
-    # train_model(model, training_args, train_test_dataset["train"], train_test_dataset["test"])
-    # print("✓ Training completed!")
+    # Train model
+    print("\n🚀 Starting training...")
+    train_model(model, training_args, train_test_dataset["train"], train_test_dataset["test"])
+    print("✓ Training completed!")
 
 if __name__ == "__main__":
     main()

@@ -15,3 +15,7 @@ data/
 *.npy
 *.h5
 *.hdf5
+.env
+/check3
+*.zip
+.DS_Store

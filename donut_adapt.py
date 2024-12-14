@@ -11,6 +11,7 @@ from transformers import (
 )
 from huggingface_hub import HfFolder, notebook_login
 import random
+from dotenv import load_dotenv
 
 def prepare_dataset():
     """Prepare and process the SROIE dataset"""
@@ -105,9 +106,16 @@ def transform_and_tokenize(sample, processor, split="train", max_length=512, ign
     return {"pixel_values": pixel_values, "labels": labels, "target_sequence": sample["text"]}
 
 def main():
-    # Login to Hugging Face
-    notebook_login()
-    print("✓ Successfully logged into Hugging Face")
+    # Load environment variables from .env file
+    load_dotenv()
+    
+    # Get token from .env file
+    token = os.getenv('HF_TOKEN')
+    if not token:
+        raise ValueError("Please ensure HF_TOKEN is set in your .env file")
+    
+    HfFolder.save_token(token)
+    print("✓ Successfully set up Hugging Face token")
     
     # Prepare dataset
     print("\n📁 Preparing dataset...")

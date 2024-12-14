@@ -35,63 +35,78 @@ def prepare_dataset():
     image_path = base_path.joinpath("img")
     metadata_list = []
 
-    # Parse metadata
-    for file_name in metadata_path.glob("*.json"):
-        with open(file_name, "r") as json_file:
-            data = json.load(json_file)
-            text = json.dumps(data)
-            if image_path.joinpath(f"{file_name.stem}.jpg").is_file():
-                metadata_list.append({"text": text, "file_name": f"{file_name.stem}.jpg"})
+    # Debug prints
+    print(f"Looking for metadata files in: {metadata_path}")
+    print(f"Looking for images in: {image_path}")
+    
+    # Check if directories exist
+    if not metadata_path.exists():
+        raise ValueError(f"Metadata directory not found: {metadata_path}")
+    if not image_path.exists():
+        raise ValueError(f"Image directory not found: {image_path}")
 
-    # Write jsonline file
-    metadata_file = image_path.joinpath('metadata.jsonl')
+    # Count files
+    metadata_files = list(metadata_path.glob("*.json"))
+    image_files = list(image_path.glob("*.jpg"))
+    print(f"Found {len(metadata_files)} JSON files and {len(image_files)} image files")
+
+    # Parse metadata
+    for file_name in metadata_files:
+        try:
+            with open(file_name, "r") as json_file:
+                data = json.load(json_file)
+                text = json.dumps(data)
+                image_file = image_path.joinpath(f"{file_name.stem}.jpg")
+                if image_file.is_file():
+                    metadata_list.append({
+                        "text": text,
+                        "file_name": f"{file_name.stem}.jpg"
+                    })
+                else:
+                    print(f"Warning: No matching image file for {file_name.stem}")
+        except json.JSONDecodeError:
+            print(f"Warning: Could not parse JSON file {file_name}")
+            continue
+        except Exception as e:
+            print(f"Error processing {file_name}: {str(e)}")
+            continue
+
+    if not metadata_list:
+        raise ValueError("No valid metadata entries found! Check the paths and file contents above.")
+
+    print(f"Successfully processed {len(metadata_list)} metadata entries")
+
+    # Create metadata.jsonl in the image directory
+    metadata_file = image_path.joinpath("metadata.jsonl")
     with open(metadata_file, 'w') as outfile:
         for entry in metadata_list:
             json.dump(entry, outfile)
             outfile.write('\n')
 
-    # Remove old metadata directory if it exists
-    if metadata_path.exists():
-        shutil.rmtree(metadata_path)
+    print(f"Created metadata file at: {metadata_file}")
 
-    # Now load the dataset from imagefolder
-    # This will give a dataset with "image" and a "label" column (if any).
-    dataset = load_dataset("imagefolder", data_dir=image_path, split="train")
+    # Load the dataset from imagefolder with correct feature specification
+    from datasets import Features, Value, Image
+    
+    features = Features({
+        'image': Image(),
+        'text': Value('string'),
+        'file_name': Value('string')
+    })
 
-    # The dataset from imagefolder won't have the 'text' field. We must integrate it.
-    # We'll create a dictionary from file_name to text for quick lookup.
+    dataset = load_dataset(
+        "imagefolder", 
+        data_dir=image_path, 
+        split="train",
+        features=features
+    )
+
+    # Add text information
     text_map = {item["file_name"]: item["text"] for item in metadata_list}
-
+    
     def add_text(example):
-        # The 'imagefolder' dataset typically provides 'image' and possibly 'label'
-        # Let's assume it has a 'image' PIL object and a filename in 'image.filename'
-        # If not, we need to rely on a known attribute: 'image' column returns PIL image, 
-        # but no filename by default. We'll rely on the dataset builder's attributes.
-        
-        # As of now, datasets.Image feature doesn't store filename, so we need a heuristic:
-        # The order of images in imagefolder is typically alphabetical by filename.
-        # If filenames are consistent, we can rely on 'id' index and rebuild the name:
-        # But better: we can load dataset with 'imagefolder' which provides a 'path' column if we specify `keep_filename=True`
-        # If that's not possible, we must guess. Let's assume we re-load with:
-        #   dataset = load_dataset("imagefolder", data_dir=image_path, split="train", keep_in_memory=True)
-        # and then 'example["image"]' might include 'path'.
-        
-        # If not available, let's add a pre-step: The images are sorted by `imagefolder` in alphabetical order.
-        # We'll rely on dataset.features to see if 'image' is a dict with 'path'.
-        
-        # Let's print features to confirm. We'll assume path is available:
-        # For safety, let's do:
-        path = example["image"].filename
-        if path:
-            fname = os.path.basename(path)
-            if fname in text_map:
-                example["text"] = text_map[fname]
-            else:
-                # If no match found, fallback to empty text or raise warning
-                example["text"] = json.dumps({})
-        else:
-            # If no path is available, we need another strategy. Let's just put empty text.
-            example["text"] = json.dumps({})
+        fname = example["file_name"]
+        example["text"] = text_map.get(fname, json.dumps({}))
         return example
 
     dataset = dataset.map(add_text)
@@ -153,22 +168,18 @@ def transform_and_tokenize(sample, processor, split="train", max_length=512, ign
     labels[labels == processor.tokenizer.pad_token_id] = ignore_id
     return {"pixel_values": pixel_values, "labels": labels, "target_sequence": sample["text"]}
 
-def main():
-    # Load environment variables from .env file
+def setup_environment():
+    """Set up environment variables and HF token."""
     load_dotenv()
     token = os.getenv('HF_TOKEN')
     if not token:
         raise ValueError("Please ensure HF_TOKEN is set in your .env file")
-
     HfFolder.save_token(token)
     print("✓ Successfully set up Hugging Face token")
 
-    # Prepare dataset
-    print("\n📁 Preparing dataset...")
-    dataset = prepare_dataset()
-    print(f"✓ Dataset prepared with {len(dataset)} samples")
-
-    # Gather all possible keys from the dataset's JSON texts for special tokens
+def initialize_processor(dataset):
+    """Initialize and configure the Donut processor with special tokens."""
+    # Gather all possible keys from the dataset's JSON texts
     all_keys = set()
     for text_str in dataset["text"]:
         data = json.loads(text_str)
@@ -181,60 +192,47 @@ def main():
         new_special_tokens.append(f"</s_{k}>")
     new_special_tokens.append("<sep/>")
 
-    # Initialize processor
-    print("\n🔄 Initializing Donut processor...")
+    # Initialize and configure processor
     processor = DonutProcessor.from_pretrained("naver-clova-ix/donut-base")
     processor.tokenizer.add_special_tokens({"additional_special_tokens": new_special_tokens})
-    print("✓ Processor initialized and tokens added")
+    processor.feature_extractor.size = {"height":720, "width":960}
+    processor.feature_extractor.do_align_long_axis = False
+    
+    return processor
 
-    # Process dataset
-    print("\n🔄 Processing documents...")
+def process_dataset(dataset, processor):
+    """Process and transform the dataset."""
     proc_dataset = dataset.map(
         preprocess_documents,
         batched=True,
         batch_size=4
     )
-    print("✓ Documents processed")
 
-    # Update processor settings
-    print("\n⚙️ Updating processor settings...")
-    # Set the size as a dict for Donut feature_extractor
-    processor.feature_extractor.size = {"height":720, "width":960}
-    processor.feature_extractor.do_align_long_axis = False
-    print("✓ Processor settings updated")
-
-    # Transform and tokenize dataset
-    print("\n🔄 Transforming and tokenizing dataset...")
     processed_dataset = proc_dataset.map(
         lambda x: transform_and_tokenize(x, processor),
         remove_columns=["image", "text"],
         batched=True,
         batch_size=4
     )
-    print("✓ Dataset transformed and tokenized")
 
-    # Split dataset
-    print("\n📊 Splitting dataset...")
-    processed_dataset = processed_dataset.train_test_split(test_size=0.1)
-    print(f"✓ Dataset split into {len(processed_dataset['train'])} train and {len(processed_dataset['test'])} test samples")
+    return processed_dataset.train_test_split(test_size=0.1)
 
-    # Initialize model
-    print("\n🔄 Initializing model...")
+def setup_model(processor):
+    """Initialize and configure the model."""
     model = VisionEncoderDecoderModel.from_pretrained("naver-clova-ix/donut-base")
     model.decoder.resize_token_embeddings(len(processor.tokenizer))
-    print("✓ Model initialized")
-
-    # Configure model
-    print("\n⚙️ Configuring model...")
+    
+    # Configure model settings
     model.config.encoder.image_size = (processor.feature_extractor.size["height"], 
-                                       processor.feature_extractor.size["width"])
+                                     processor.feature_extractor.size["width"])
     model.config.pad_token_id = processor.tokenizer.pad_token_id
     model.config.decoder_start_token_id = processor.tokenizer.convert_tokens_to_ids("<s>")
-    print("✓ Model configured")
+    
+    return model
 
-    # Setup training arguments
-    print("\n⚙️ Setting up training arguments...")
-    training_args = Seq2SeqTrainingArguments(
+def get_training_args():
+    """Set up and return training arguments."""
+    return Seq2SeqTrainingArguments(
         output_dir="donut-base-sroie",
         num_train_epochs=3,
         learning_rate=2e-5,
@@ -250,27 +248,56 @@ def main():
         predict_with_generate=True,
         report_to="tensorboard",
         hub_strategy="every_save",
-        # Replace "YourHuggingFaceUsername" with your actual username
         hub_model_id="YourHuggingFaceUsername/donut-base-sroie",
         push_to_hub=True,
         hub_token=HfFolder.get_token(),
     )
-    print("✓ Training arguments set")
 
-    # Initialize trainer
-    print("\n🔄 Initializing trainer...")
+def train_model(model, training_args, train_dataset, test_dataset):
+    """Initialize trainer and train the model."""
     trainer = Seq2SeqTrainer(
         model=model,
         args=training_args,
-        train_dataset=processed_dataset["train"],
-        eval_dataset=processed_dataset["test"],
+        train_dataset=train_dataset,
+        eval_dataset=test_dataset,
     )
-    print("✓ Trainer initialized")
-
-    # Train model
-    print("\n🚀 Starting training...")
+    
     trainer.train()
-    print("✓ Training completed!")
+
+def main():
+    # Set up environment
+    print("\n🔧 Setting up environment...")
+    setup_environment()
+
+    # Prepare dataset
+    print("\n📁 Preparing dataset...")
+    dataset = prepare_dataset()
+    print(f"✓ Dataset prepared with {len(dataset)} samples")
+
+    # Initialize processor
+    print("\n🔄 Initializing Donut processor...")
+    processor = initialize_processor(dataset)
+    print("✓ Processor initialized and configured")
+
+    # # Process dataset
+    # print("\n🔄 Processing and transforming dataset...")
+    # train_test_dataset = process_dataset(dataset, processor)
+    # print(f"✓ Dataset split into {len(train_test_dataset['train'])} train and {len(train_test_dataset['test'])} test samples")
+
+    # # Setup model
+    # print("\n🔄 Setting up model...")
+    # model = setup_model(processor)
+    # print("✓ Model initialized and configured")
+
+    # # Get training arguments
+    # print("\n⚙️ Setting up training arguments...")
+    # training_args = get_training_args()
+    # print("✓ Training arguments configured")
+
+    # # Train model
+    # print("\n🚀 Starting training...")
+    # train_model(model, training_args, train_test_dataset["train"], train_test_dataset["test"])
+    # print("✓ Training completed!")
 
 if __name__ == "__main__":
     main()

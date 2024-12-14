@@ -1,0 +1,23 @@
+
+🔧 Setting up environment...
+✓ Successfully set up Hugging Face token
+
+📁 Preparing dataset...
+Looking for metadata files in: data/key
+Looking for images in: data/img
+Found 626 JSON files and 626 image files
+Successfully processed 626 metadata entries
+Created metadata file at: data/img/metadata.jsonl
+Downloading data:   0%|          | 0/627 [00:00<?, ?files/s]Downloading data: 100%|██████████| 627/627 [00:00<00:00, 48379.79files/s]
+Generating train split: 0 examples [00:00, ? examples/s]Generating train split: 58 examples [00:00, 405.32 examples/s]Generating train split: 600 examples [00:00, 2884.02 examples/s]Generating train split: 626 examples [00:00, 2482.21 examples/s]
+Map:   0%|          | 0/626 [00:00<?, ? examples/s]Map: 100%|██████████| 626/626 [00:00<00:00, 8839.92 examples/s]
+/Users/pranav/work/freelance/handwriting/check3/check3/lib/python3.9/site-packages/transformers/models/donut/processing_donut.py:193: FutureWarning: `feature_extractor` is deprecated and will be removed in v5. Use `image_processor` instead.
+  warnings.warn(
+✓ Dataset prepared with 626 samples
+
+🔄 Initializing Donut processor...
+✓ Processor initialized and configured
+
+🔄 Processing and transforming dataset...
+Map:   0%|          | 0/626 [00:00<?, ? examples/s]Map:   1%|          | 4/626 [00:01<04:36,  2.25 examples/s]Map:   1%|▏         | 8/626 [00:03<04:40,  2.20 examples/s]Map:   2%|▏         | 12/626 [00:09<09:52,  1.04 examples/s]Map:   3%|▎         | 16/626 [00:18<14:41,  1.44s/ examples]Map:   3%|▎         | 20/626 [00:28<17:54,  1.77s/ examples]/Library/Frameworks/Python.framework/Versions/3.9/lib/python3.9/multiprocessing/resource_tracker.py:216: UserWarning: resource_tracker: There appear to be 1 leaked semaphore objects to clean up at shutdown
+  warnings.warn('resource_tracker: There appear to be %d '

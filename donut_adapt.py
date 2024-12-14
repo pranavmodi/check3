@@ -13,6 +13,7 @@ from huggingface_hub import HfFolder
 import random
 from dotenv import load_dotenv
 from PIL import Image
+import argparse
 
 def gather_json_keys(json_obj, keys_set=None):
     """Recursively gather all keys from the JSON structure."""
@@ -230,13 +231,13 @@ def setup_model(processor):
     
     return model
 
-def get_training_args():
+def get_training_args(batch_size):
     """Set up and return training arguments."""
     return Seq2SeqTrainingArguments(
         output_dir="donut-base-sroie",
         num_train_epochs=3,
         learning_rate=2e-5,
-        per_device_train_batch_size=2,
+        per_device_train_batch_size=batch_size,
         weight_decay=0.01,
         fp16=True,
         logging_steps=50,
@@ -264,7 +265,19 @@ def train_model(model, training_args, train_dataset, test_dataset):
     
     trainer.train()
 
+def parse_args():
+    """Parse command line arguments."""
+    parser = argparse.ArgumentParser(description='Train Donut model with custom batch size')
+    parser.add_argument('--batch_size', 
+                       type=int, 
+                       default=2,
+                       help='Batch size for training (default: 2)')
+    return parser.parse_args()
+
 def main():
+    # Parse command line arguments
+    args = parse_args()
+    
     # Set up environment
     print("\n🔧 Setting up environment...")
     setup_environment()
@@ -290,8 +303,8 @@ def main():
     print("✓ Model initialized and configured")
 
     # Get training arguments
-    print("\n⚙️ Setting up training arguments...")
-    training_args = get_training_args()
+    print(f"\n⚙️ Setting up training arguments with batch size {args.batch_size}...")
+    training_args = get_training_args(args.batch_size)
     print("✓ Training arguments configured")
 
     # Train model

@@ -1,0 +1,17 @@
+# Data directory
+data/
+/data
+*.csv
+*.json
+*.xlsx
+*.xls
+*.db
+*.sqlite
+*.sqlite3
+
+# Common data formats
+*.dat
+*.pkl
+*.npy
+*.h5
+*.hdf5

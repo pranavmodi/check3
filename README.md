@@ -1,0 +1,1 @@
+nohup python donut_adapt.py --batch_size 128 > output.log 2>&1 &

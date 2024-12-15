@@ -234,13 +234,17 @@ def setup_model(processor):
 
 def get_training_args(args):
     """Set up and return training arguments."""
+    # Check if CUDA is available
+    import torch
+    use_fp16 = torch.cuda.is_available()  # Only use fp16 if running on GPU
+    
     return Seq2SeqTrainingArguments(
         output_dir=args.checkpoint_dir,
         num_train_epochs=3,
         learning_rate=2e-5,
         per_device_train_batch_size=args.batch_size,
         weight_decay=0.01,
-        fp16=True,
+        fp16=use_fp16,  # Now conditional on GPU availability
         logging_steps=50,
         save_total_limit=2,
         evaluation_strategy="steps",
@@ -249,7 +253,6 @@ def get_training_args(args):
         save_steps=50,
         predict_with_generate=True,
         report_to="tensorboard",
-        # Hugging Face Hub settings - now conditional
         hub_strategy="every_save" if args.push_to_hub else "end",
         hub_model_id=args.hub_model_id if args.push_to_hub else None,
         push_to_hub=args.push_to_hub,

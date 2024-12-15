@@ -273,6 +273,9 @@ def parse_args():
                        type=int, 
                        default=2,
                        help='Batch size for training (default: 2)')
+    parser.add_argument('--load_saved',
+                       action='store_true',
+                       help='Load previously processed data instead of processing again')
     return parser.parse_args()
 
 def save_processed_data(dataset, processor, output_dir="processed_data"):
@@ -313,23 +316,28 @@ def main():
     print("\n🔧 Setting up environment...")
     setup_environment()
 
-    # Prepare dataset
-    print("\n📁 Preparing dataset...")
-    dataset = prepare_dataset()
-    print(f"✓ Dataset prepared with {len(dataset)} samples")
+    if args.load_saved:
+        print("\n📂 Loading previously processed data...")
+        train_test_dataset, processor = load_processed_data()
+        print(f"✓ Loaded dataset with {len(train_test_dataset['train'])} train and {len(train_test_dataset['test'])} test samples")
+    else:
+        # Prepare dataset
+        print("\n📁 Preparing dataset...")
+        dataset = prepare_dataset()
+        print(f"✓ Dataset prepared with {len(dataset)} samples")
 
-    # Initialize processor
-    print("\n🔄 Initializing Donut processor...")
-    processor = initialize_processor(dataset)
-    print("✓ Processor initialized and configured")
+        # Initialize processor
+        print("\n🔄 Initializing Donut processor...")
+        processor = initialize_processor(dataset)
+        print("✓ Processor initialized and configured")
 
-    # Process dataset
-    print("\n🔄 Processing and transforming dataset...")
-    train_test_dataset = process_dataset(dataset, processor, args.batch_size)
-    print(f"✓ Dataset split into {len(train_test_dataset['train'])} train and {len(train_test_dataset['test'])} test samples")
+        # Process dataset
+        print("\n🔄 Processing and transforming dataset...")
+        train_test_dataset = process_dataset(dataset, processor, args.batch_size)
+        print(f"✓ Dataset split into {len(train_test_dataset['train'])} train and {len(train_test_dataset['test'])} test samples")
 
-    # Save processed data
-    save_processed_data(train_test_dataset, processor)
+        # Save processed data
+        save_processed_data(train_test_dataset, processor)
 
     # Setup model
     print("\n🔄 Setting up model...")

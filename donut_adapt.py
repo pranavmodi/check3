@@ -232,13 +232,13 @@ def setup_model(processor):
     
     return model
 
-def get_training_args(batch_size):
+def get_training_args(args):
     """Set up and return training arguments."""
     return Seq2SeqTrainingArguments(
-        output_dir="donut-base-sroie",
+        output_dir=args.checkpoint_dir,
         num_train_epochs=3,
         learning_rate=2e-5,
-        per_device_train_batch_size=batch_size,
+        per_device_train_batch_size=args.batch_size,
         weight_decay=0.01,
         fp16=True,
         logging_steps=50,
@@ -249,10 +249,11 @@ def get_training_args(batch_size):
         save_steps=50,
         predict_with_generate=True,
         report_to="tensorboard",
-        hub_strategy="every_save",
-        hub_model_id="YourHuggingFaceUsername/donut-base-sroie",
-        push_to_hub=True,
-        hub_token=HfFolder.get_token(),
+        # Hugging Face Hub settings - now conditional
+        hub_strategy="every_save" if args.push_to_hub else "end",
+        hub_model_id=args.hub_model_id if args.push_to_hub else None,
+        push_to_hub=args.push_to_hub,
+        hub_token=HfFolder.get_token() if args.push_to_hub else None,
     )
 
 def train_model(model, training_args, train_dataset, test_dataset):
@@ -276,6 +277,16 @@ def parse_args():
     parser.add_argument('--load_saved',
                        action='store_true',
                        help='Load previously processed data instead of processing again')
+    parser.add_argument('--checkpoint_dir',
+                       type=str,
+                       default="donut-base-sroie",
+                       help='Directory to save checkpoints')
+    parser.add_argument('--push_to_hub',
+                       action='store_true',
+                       help='Push checkpoints to Hugging Face Hub')
+    parser.add_argument('--hub_model_id',
+                       type=str,
+                       help='Hugging Face Hub model ID (username/model-name)')
     return parser.parse_args()
 
 def save_processed_data(dataset, processor, output_dir="processed_data"):
@@ -346,7 +357,7 @@ def main():
 
     # Get training arguments
     print(f"\n⚙️ Setting up training arguments with batch size {args.batch_size}...")
-    training_args = get_training_args(args.batch_size)
+    training_args = get_training_args(args)
     print("✓ Training arguments configured")
 
     # Train model

@@ -248,7 +248,7 @@ def get_training_args(args):
         logging_steps=50,
         save_total_limit=2,
         evaluation_strategy="steps",
-        eval_steps=50,
+        eval_steps=10,
         save_strategy="steps",
         save_steps=10,
         predict_with_generate=True,

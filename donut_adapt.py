@@ -219,10 +219,14 @@ def process_dataset(dataset, processor, batch_size):
 
     return processed_dataset.train_test_split(test_size=0.1)
 
-def setup_model(processor):
+def setup_model(processor, checkpoint_path=None):
     """Initialize and configure the model."""
-    model = VisionEncoderDecoderModel.from_pretrained("naver-clova-ix/donut-base")
-    model.decoder.resize_token_embeddings(len(processor.tokenizer))
+    if checkpoint_path:
+        print(f"Loading model from checkpoint: {checkpoint_path}")
+        model = VisionEncoderDecoderModel.from_pretrained(checkpoint_path)
+    else:
+        model = VisionEncoderDecoderModel.from_pretrained("naver-clova-ix/donut-base")
+        model.decoder.resize_token_embeddings(len(processor.tokenizer))
     
     # Configure model settings
     model.config.encoder.image_size = (processor.feature_extractor.size["height"], 
@@ -290,6 +294,9 @@ def parse_args():
     parser.add_argument('--hub_model_id',
                        type=str,
                        help='Hugging Face Hub model ID (username/model-name)')
+    parser.add_argument('--checkpoint_path',
+                       type=str,
+                       help='Path to load model checkpoint from')
     return parser.parse_args()
 
 def save_processed_data(dataset, processor, output_dir="processed_data"):
@@ -355,7 +362,7 @@ def main():
 
     # Setup model
     print("\n🔄 Setting up model...")
-    model = setup_model(processor)
+    model = setup_model(processor, args.checkpoint_path)
     print("✓ Model initialized and configured")
 
     # Get training arguments

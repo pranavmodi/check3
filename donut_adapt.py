@@ -329,6 +329,24 @@ def load_processed_data(input_dir="processed_data"):
     
     return dataset, processor
 
+def test_hub_connection(model, args):
+    """Test pushing to Hugging Face Hub before starting training."""
+    if not args.push_to_hub:
+        return
+    
+    print("\n🧪 Testing connection to Hugging Face Hub...")
+    try:
+        # Create a test commit to ensure we have write access
+        model.push_to_hub(
+            args.hub_model_id,
+            commit_message="Test commit - Initial model push",
+            private=True  # Set to False if you want a public repository
+        )
+        print("✓ Successfully pushed test commit to Hugging Face Hub")
+    except Exception as e:
+        raise Exception(f"❌ Failed to push to Hugging Face Hub. Error: {str(e)}\n"
+                       f"Please check your token and repository permissions.")
+
 def main():
     # Parse command line arguments
     args = parse_args()
@@ -364,6 +382,10 @@ def main():
     print("\n🔄 Setting up model...")
     model = setup_model(processor, args.checkpoint_path)
     print("✓ Model initialized and configured")
+
+    # Test Hub connection if push_to_hub is enabled
+    if args.push_to_hub:
+        test_hub_connection(model, args)
 
     # Get training arguments
     print(f"\n⚙️ Setting up training arguments with batch size {args.batch_size}...")

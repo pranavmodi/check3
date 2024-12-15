@@ -14,6 +14,7 @@ import random
 from dotenv import load_dotenv
 from PIL import Image
 import argparse
+import datasets
 
 def gather_json_keys(json_obj, keys_set=None):
     """Recursively gather all keys from the JSON structure."""
@@ -201,19 +202,19 @@ def initialize_processor(dataset):
     
     return processor
 
-def process_dataset(dataset, processor):
+def process_dataset(dataset, processor, batch_size):
     """Process and transform the dataset."""
     proc_dataset = dataset.map(
         preprocess_documents,
         batched=True,
-        batch_size=4
+        batch_size=batch_size
     )
 
     processed_dataset = proc_dataset.map(
         lambda x: transform_and_tokenize(x, processor),
         remove_columns=["image", "text"],
         batched=True,
-        batch_size=4
+        batch_size=batch_size
     )
 
     return processed_dataset.train_test_split(test_size=0.1)
@@ -274,6 +275,36 @@ def parse_args():
                        help='Batch size for training (default: 2)')
     return parser.parse_args()
 
+def save_processed_data(dataset, processor, output_dir="processed_data"):
+    """Save the processed dataset and processor to disk."""
+    # Create output directory if it doesn't exist
+    output_path = Path(output_dir)
+    output_path.mkdir(parents=True, exist_ok=True)
+
+    # Save the dataset
+    print(f"\n💾 Saving processed dataset to {output_path}...")
+    dataset.save_to_disk(output_path / "dataset")
+
+    # Save the processor
+    print(f"💾 Saving processor to {output_path}...")
+    processor.save_pretrained(output_path / "processor")
+    print("✓ Successfully saved processed data and processor")
+
+def load_processed_data(input_dir="processed_data"):
+    """Load the processed dataset and processor from disk."""
+    input_path = Path(input_dir)
+    
+    # Load the dataset
+    print(f"\n📂 Loading processed dataset from {input_path}...")
+    dataset = datasets.load_from_disk(input_path / "dataset")
+    
+    # Load the processor
+    print(f"📂 Loading processor from {input_path}...")
+    processor = DonutProcessor.from_pretrained(input_path / "processor")
+    print("✓ Successfully loaded processed data and processor")
+    
+    return dataset, processor
+
 def main():
     # Parse command line arguments
     args = parse_args()
@@ -294,8 +325,11 @@ def main():
 
     # Process dataset
     print("\n🔄 Processing and transforming dataset...")
-    train_test_dataset = process_dataset(dataset, processor)
+    train_test_dataset = process_dataset(dataset, processor, args.batch_size)
     print(f"✓ Dataset split into {len(train_test_dataset['train'])} train and {len(train_test_dataset['test'])} test samples")
+
+    # Save processed data
+    save_processed_data(train_test_dataset, processor)
 
     # Setup model
     print("\n🔄 Setting up model...")

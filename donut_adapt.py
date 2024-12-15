@@ -250,7 +250,7 @@ def get_training_args(args):
         evaluation_strategy="steps",
         eval_steps=50,
         save_strategy="steps",
-        save_steps=50,
+        save_steps=10,
         predict_with_generate=True,
         report_to="tensorboard",
         hub_strategy="every_save" if args.push_to_hub else "end",

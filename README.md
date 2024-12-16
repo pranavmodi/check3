@@ -17,3 +17,6 @@ python hf_push.py --checkpoint_dir "donut-base-sroie" --hub_model_id "PranavMoD/
 
 
 python donut_predict.py --model_path "PranavMod/donut-base-sroie" --processor_path "processor_download" --image_path test/000.jpg --use_hf
+
+
+python donut_predict.py --model_path donut-base-sroie/checkpoint-846 --processor_path ./local/processor/path --image_path ./image.jpg

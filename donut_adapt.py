@@ -299,19 +299,21 @@ def parse_args():
                        help='Path to load model checkpoint from')
     return parser.parse_args()
 
-def save_processed_data(dataset, processor, output_dir="processed_data"):
+def save_processed_data(dataset, processor, output_dir="processed_data", processor_dir="processor_download"):
     """Save the processed dataset and processor to disk."""
-    # Create output directory if it doesn't exist
+    # Create output directories if they don't exist
     output_path = Path(output_dir)
+    processor_path = Path(processor_dir)
     output_path.mkdir(parents=True, exist_ok=True)
+    processor_path.mkdir(parents=True, exist_ok=True)
 
     # Save the dataset
     print(f"\n💾 Saving processed dataset to {output_path}...")
     dataset.save_to_disk(output_path / "dataset")
 
-    # Save the processor
-    print(f"💾 Saving processor to {output_path}...")
-    processor.save_pretrained(output_path / "processor")
+    # Save the processor to the specified processor directory
+    print(f"💾 Saving processor to {processor_path}...")
+    processor.save_pretrained(processor_path)
     print("✓ Successfully saved processed data and processor")
 
 def load_processed_data(input_dir="processed_data"):
@@ -376,7 +378,7 @@ def main():
         print(f"✓ Dataset split into {len(train_test_dataset['train'])} train and {len(train_test_dataset['test'])} test samples")
 
         # Save processed data
-        save_processed_data(train_test_dataset, processor)
+        save_processed_data(train_test_dataset, processor, output_dir="processed_data", processor_dir="processor_download")
 
     # Setup model
     print("\n🔄 Setting up model...")
